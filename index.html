@@ -465,8 +465,6 @@ function stopTts(keepSession){
   updateMediaState(false);
 }
 
-var _autoPlay = false; // 자동 연속 낭독 플래그
-
 function updateTtsBtn(){
   var u=UI[lang]||UI.ko;
   var btn=document.getElementById('btn-main');
@@ -474,7 +472,8 @@ function updateTtsBtn(){
   var step=seq[idx];
   if(step && step.t==='DONE'){ btn.disabled=true; btn.textContent=u.play; return; }
   btn.disabled=false;
-  btn.textContent = _autoPlay ? u.pause : u.play;
+  // 낭독 중이면 "⏭ 다음(건너뛰기)", 아니면 "▶ 낭독"
+  btn.textContent = isSpeaking ? u.next : u.play;
 }
 
 function setStatus(k){
@@ -483,16 +482,20 @@ function setStatus(k){
 }
 
 function updateMeta(){
-  // MediaSession 메타데이터 업데이트
   var step=seq[idx]; if(!step) return;
   var c=stepContent(step);
   var mt=null; for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
   setupMediaSession(c.title, mt?(MNAMES[lang]||MNAMES.ko)[mt]:'묵주기도');
 }
 
+function advanceNext(){
+  // 낭독 완료 후 또는 건너뛰기 후 다음 단계로 이동 (자동 낭독 없이)
+  if(idx < seq.length-1){ idx++; refreshDisplay(); }
+}
+
 function speakStep(){
   var step=seq[idx];
-  if(!step||step.t==='DONE'){ _autoPlay=false; updateTtsBtn(); return; }
+  if(!step||step.t==='DONE'){ updateTtsBtn(); return; }
   if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(e){} }
   var vm=load('voice','full');
   var c=stepContent(step);
@@ -503,39 +506,31 @@ function speakStep(){
   utt.rate=sp;
   utt.onstart=function(){ isSpeaking=true; isPaused=false; updateTtsBtn(); setStatus('speaking'); updateMediaState(true); };
   utt.onend=function(){
-    isSpeaking=false; isPaused=false; updateMediaState(false);
-    if(_autoPlay && idx<seq.length-1){
-      // 자동으로 다음 단계로 이동
-      idx++;
-      refreshDisplay();
-      speakStep();
-    } else {
-      _autoPlay=false; updateTtsBtn(); setStatus('');
-    }
+    isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false);
+    advanceNext(); // 낭독 끝 → 다음으로 이동
   };
-  utt.onerror=function(){ isSpeaking=false; isPaused=false; _autoPlay=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
+  utt.onerror=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
   updateMeta();
   window.speechSynthesis.speak(utt);
 }
 
 function mainAction(){
   if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
-  if(_autoPlay){
-    // 실행 중 → 중지
-    _autoPlay=false;
-    stopTts(false);
+  if(isSpeaking){
+    // 낭독 중 → 건너뛰고 즉시 다음으로 이동
+    stopTts(true);
+    advanceNext();
     return;
   }
-  // 시작: 현재 단계부터 끝까지 자동 낭독
-  _autoPlay=true;
+  // 정지 상태 → 현재 단계 낭독 (끝나면 자동으로 다음으로 이동)
   startSilentAudio();
   speakStep();
 }
 
 function toggleTts(){
   // MediaSession play/pause 핸들러용
-  if(_autoPlay){ _autoPlay=false; stopTts(false); }
-  else { _autoPlay=true; startSilentAudio(); speakStep(); }
+  if(isSpeaking){ stopTts(true); advanceNext(); }
+  else { startSilentAudio(); speakStep(); }
 }
 
 function doStop(){

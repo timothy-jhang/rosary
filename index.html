@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="묵주기도">
+<title>✝ 묵주기도</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FDF6EC;color:#222;min-height:100vh}
+.screen{display:none;min-height:100vh}
+.screen.active{display:block}
+
+/* Settings */
+.s-header{background:#5C2D91;color:#fff;text-align:center;padding:28px 16px 16px}
+.s-header h1{font-size:24px;font-weight:700}
+.s-header p{font-size:12px;color:#DDD0F7;margin-top:4px}
+.today-box{background:#EEE8FF;color:#5C2D91;text-align:center;padding:10px 16px;font-size:14px;font-weight:600}
+.section{padding:16px 16px 8px}
+.sec-label{font-size:14px;font-weight:700;color:#5C2D91;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.sel-wrap{position:relative;background:#fff;border:1px solid #ccc;border-radius:8px;overflow:hidden}
+.sel-wrap select{width:100%;padding:12px 36px 12px 12px;border:none;background:transparent;-webkit-appearance:none;appearance:none;font-size:16px;color:#222}
+.sel-wrap::after{content:"▾";position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#5C2D91;pointer-events:none}
+.rg{display:flex;flex-direction:column;gap:4px}
+.ri{display:flex;align-items:center;gap:10px;padding:12px;background:#fff;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:15px;color:#222}
+.ri input{width:18px;height:18px;accent-color:#5C2D91;flex-shrink:0}
+.ri.on{border-color:#5C2D91;background:#F5F0FF}
+.speed-row{display:flex;align-items:center;gap:10px}
+.speed-row input[type=range]{flex:1;accent-color:#5C2D91;height:4px}
+.speed-val{min-width:40px;text-align:right;font-size:14px;color:#5C2D91;font-weight:700}
+#manual-row{margin-top:4px}
+.btn-start{display:block;width:calc(100% - 32px);margin:20px 16px 40px;padding:18px;background:#5C2D91;color:#fff;border:none;border-radius:12px;font-size:20px;font-weight:700;cursor:pointer}
+.btn-start:active{background:#3D1A6E}
+
+/* Prayer */
+#prayer{display:flex;flex-direction:column;min-height:100vh}
+.p-hdr{background:#5C2D91;color:#fff;padding:14px 16px;text-align:center}
+.p-mname{font-size:13px;opacity:.8;min-height:18px}
+.p-prog{font-size:12px;opacity:.65;margin-top:2px}
+.p-bar-wrap{height:4px;background:#3D1A6E}
+.p-bar{height:4px;background:#DDD0F7;transition:width .3s}
+.p-body{flex:1;padding:16px;overflow-y:auto}
+.p-decade{font-size:12px;color:#5C2D91;font-weight:700;margin-bottom:6px;min-height:16px}
+.p-title{font-size:18px;font-weight:700;color:#333;margin-bottom:12px;line-height:1.4}
+.p-text{font-size:16px;color:#444;line-height:1.8;white-space:pre-wrap}
+.p-foot{padding:12px 16px 24px;background:#F5F0FF;border-top:1px solid #DDD0F7}
+.tts-st{text-align:center;font-size:12px;color:#5C2D91;margin-bottom:6px;min-height:16px}
+.nav-row{display:flex;gap:8px;margin-bottom:8px}
+.btn-nav{flex:1;padding:14px;background:#5C2D91;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
+.btn-nav:disabled{background:#bbb;cursor:default}
+.btn-nav:active:not(:disabled){background:#3D1A6E}
+.btn-tts{width:100%;padding:12px;background:#fff;color:#5C2D91;border:2px solid #5C2D91;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
+.btn-tts:active{background:#EEE8FF}
+.btn-tts:disabled{opacity:.4;cursor:default}
+.btn-stop{display:block;width:100%;padding:10px;background:transparent;color:#888;border:none;font-size:13px;cursor:pointer;margin-top:4px}
+.done-box{text-align:center;padding:48px 20px}
+.done-cross{font-size:56px;margin-bottom:16px}
+.done-msg{font-size:18px;font-weight:600;color:#5C2D91;line-height:1.7}
+</style>
+</head>
+<body>
+
+<!-- SETTINGS -->
+<div id="settings" class="screen active">
+  <div class="s-header">
+    <h1 id="ui-h1">✝ 묵주기도</h1>
+    <p>Rosario · Chapelet · Rosenkranz</p>
+  </div>
+  <div class="today-box" id="ui-today">오늘의 신비</div>
+
+  <div class="section">
+    <div class="sec-label" id="ui-ll">🌐 언어</div>
+    <div class="sel-wrap">
+      <select id="sel-lang" onchange="onLangChange(this.value)">
+        <option value="ko">한국어</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="de">Deutsch</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label" id="ui-ml">📿 신비 선택</div>
+    <div class="rg" id="rg-m">
+      <label class="ri on"><input type="radio" name="myst" value="day" onchange="onMystMode('day')"><span id="ui-mday">요일에 따라 자동 선택</span></label>
+      <label class="ri"><input type="radio" name="myst" value="manual" onchange="onMystMode('manual')"><span id="ui-mman">직접 선택</span></label>
+    </div>
+    <div id="manual-row" style="display:none;margin-top:4px">
+      <div class="sel-wrap">
+        <select id="sel-myst" onchange="save('manualMyst',this.value)">
+          <option value="JOYFUL">환희의 신비</option>
+          <option value="LUMINOUS">빛의 신비</option>
+          <option value="SORROWFUL">고통의 신비</option>
+          <option value="GLORIOUS">영광의 신비</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label" id="ui-vl">🔊 음성 안내 방식</div>
+    <div class="rg" id="rg-v">
+      <label class="ri on"><input type="radio" name="voice" value="full" onchange="save('voice','full');rehigh('rg-v')"><span id="ui-vfull">전체 기도문 낭독</span></label>
+      <label class="ri"><input type="radio" name="voice" value="title" onchange="save('voice','title');rehigh('rg-v')"><span id="ui-vtitle">기도 제목만 안내</span></label>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="sec-label" id="ui-sl">🎙 낭독 속도</div>
+    <div class="speed-row">
+      <input type="range" id="rng-speed" min="40" max="200" value="90" oninput="onSpeed(this.value)">
+      <span class="speed-val" id="lbl-speed">0.9x</span>
+    </div>
+  </div>
+
+  <button class="btn-start" id="btn-start" onclick="startPrayer()">✝ 기도 시작</button>
+</div>
+
+<!-- PRAYER -->
+<div id="prayer" class="screen">
+  <div class="p-hdr">
+    <div class="p-mname" id="p-mname"></div>
+    <div class="p-prog" id="p-prog"></div>
+  </div>
+  <div class="p-bar-wrap"><div class="p-bar" id="p-bar"></div></div>
+  <div class="p-body">
+    <div class="p-decade" id="p-decade"></div>
+    <div class="p-title" id="p-title"></div>
+    <div class="p-text" id="p-text"></div>
+  </div>
+  <div class="p-foot">
+    <div class="tts-st" id="tts-st"></div>
+    <div class="nav-row">
+      <button class="btn-nav" id="btn-prev" onclick="goPrev()">◀</button>
+      <button class="btn-nav" id="btn-next" onclick="goNext()">▶</button>
+    </div>
+    <button class="btn-tts" id="btn-tts" onclick="toggleTts()">▶ 낭독</button>
+    <button class="btn-stop" onclick="doStop()">✕ 기도 중단</button>
+  </div>
+</div>
+
+<script>
+// ── Simple storage wrapper (won't crash on file:// or private mode) ──
+var _mem = {};
+function load(k,def){try{var v=localStorage.getItem(k);return v===null?def:v;}catch(e){return _mem[k]!==undefined?_mem[k]:def;}}
+function save(k,v){try{localStorage.setItem(k,v);}catch(e){_mem[k]=v;}}
+
+// ── UI strings ──
+var UI = {
+  ko:{h1:'✝ 묵주기도',ll:'🌐 언어',ml:'📿 신비 선택',mday:'요일에 따라 자동 선택',mman:'직접 선택',vl:'🔊 음성 안내 방식',vfull:'전체 기도문 낭독',vtitle:'기도 제목만 안내',sl:'🎙 낭독 속도',start:'✝ 기도 시작',prev:'◀ 이전',next:'다음 ▶',play:'▶ 낭독',pause:'⏸ 일시정지',resume:'▶ 재개',stop:'✕ 기도 중단',confirm:'기도를 중단하시겠습니까?',speaking:'낭독 중…',paused:'일시정지'},
+  ja:{h1:'✝ ロザリオ',ll:'🌐 言語',ml:'📿 玄義の選択',mday:'曜日に応じて自動選択',mman:'手動で選択',vl:'🔊 音声ガイドの方式',vfull:'全文読み上げ',vtitle:'タイトルのみ',sl:'🎙 読み上げ速度',start:'✝ 祈り開始',prev:'◀ 前',next:'次 ▶',play:'▶ 読み上げ',pause:'⏸ 停止',resume:'▶ 再開',stop:'✕ 中断',confirm:'祈りを中断しますか？',speaking:'読み上げ中…',paused:'停止中'},
+  zh:{h1:'✝ 玫瑰经',ll:'🌐 语言',ml:'📿 奥义选择',mday:'按星期自动选择',mman:'手动选择',vl:'🔊 语音引导方式',vfull:'朗读全文',vtitle:'仅播报名称',sl:'🎙 朗读速度',start:'✝ 开始祈祷',prev:'◀ 上一',next:'下一 ▶',play:'▶ 朗读',pause:'⏸ 暂停',resume:'▶ 继续',stop:'✕ 中断',confirm:'确定要中断祈祷吗？',speaking:'朗读中…',paused:'已暂停'},
+  en:{h1:'✝ The Rosary',ll:'🌐 Language',ml:'📿 Mystery Selection',mday:'Auto by day of week',mman:'Choose manually',vl:'🔊 Voice Guide Mode',vfull:'Read full prayer text',vtitle:'Announce title only',sl:'🎙 Reading Speed',start:'✝ Begin Prayer',prev:'◀ Prev',next:'Next ▶',play:'▶ Read Aloud',pause:'⏸ Pause',resume:'▶ Resume',stop:'✕ Stop',confirm:'Do you want to stop the prayer?',speaking:'Speaking…',paused:'Paused'},
+  it:{h1:'✝ Il Rosario',ll:'🌐 Lingua',ml:'📿 Selezione Mistero',mday:'Automatico per giorno',mman:'Scegli manualmente',vl:'🔊 Modalità vocale',vfull:'Leggi testo completo',vtitle:'Solo titolo',sl:'🎙 Velocità',start:'✝ Inizia',prev:'◀',next:'▶',play:'▶ Leggi',pause:'⏸ Pausa',resume:'▶ Riprendi',stop:'✕ Ferma',confirm:'Interrompere la preghiera?',speaking:'Lettura…',paused:'In pausa'},
+  fr:{h1:'✝ Le Chapelet',ll:'🌐 Langue',ml:'📿 Choix du Mystère',mday:'Automatique par jour',mman:'Choisir',vl:'🔊 Mode vocal',vfull:'Lire le texte complet',vtitle:'Titre seulement',sl:'🎙 Vitesse',start:'✝ Commencer',prev:'◀',next:'▶',play:'▶ Lire',pause:'⏸ Pause',resume:'▶ Reprendre',stop:'✕ Arrêter',confirm:'Arrêter la prière?',speaking:'Lecture…',paused:'En pause'},
+  es:{h1:'✝ El Rosario',ll:'🌐 Idioma',ml:'📿 Selección de Misterio',mday:'Automático por día',mman:'Elegir',vl:'🔊 Modo vocal',vfull:'Leer texto completo',vtitle:'Solo el título',sl:'🎙 Velocidad',start:'✝ Comenzar',prev:'◀',next:'▶',play:'▶ Leer',pause:'⏸ Pausa',resume:'▶ Reanudar',stop:'✕ Detener',confirm:'¿Detener la oración?',speaking:'Hablando…',paused:'En pausa'},
+  de:{h1:'✝ Der Rosenkranz',ll:'🌐 Sprache',ml:'📿 Geheimnisauswahl',mday:'Automatisch nach Wochentag',mman:'Manuell',vl:'🔊 Sprachmodus',vfull:'Vollständigen Text',vtitle:'Nur Titel',sl:'🎙 Geschwindigkeit',start:'✝ Beginnen',prev:'◀',next:'▶',play:'▶ Vorlesen',pause:'⏸ Pause',resume:'▶ Fortsetzen',stop:'✕ Abbrechen',confirm:'Gebet unterbrechen?',speaking:'Liest vor…',paused:'Pausiert'},
+};
+
+var MNAMES = {
+  ko:{JOYFUL:'환희의 신비',LUMINOUS:'빛의 신비',SORROWFUL:'고통의 신비',GLORIOUS:'영광의 신비'},
+  ja:{JOYFUL:'喜びの神秘',LUMINOUS:'光の神秘',SORROWFUL:'苦しみの神秘',GLORIOUS:'栄えの神秘'},
+  zh:{JOYFUL:'欢喜五端',LUMINOUS:'光明五端',SORROWFUL:'痛苦五端',GLORIOUS:'荣福五端'},
+  en:{JOYFUL:'Joyful Mysteries',LUMINOUS:'Luminous Mysteries',SORROWFUL:'Sorrowful Mysteries',GLORIOUS:'Glorious Mysteries'},
+  it:{JOYFUL:'Misteri Gaudiosi',LUMINOUS:'Misteri Luminosi',SORROWFUL:'Misteri Dolorosi',GLORIOUS:'Misteri Gloriosi'},
+  fr:{JOYFUL:'Mystères Joyeux',LUMINOUS:'Mystères Lumineux',SORROWFUL:'Mystères Douloureux',GLORIOUS:'Mystères Glorieux'},
+  es:{JOYFUL:'Misterios Gozosos',LUMINOUS:'Misterios Luminosos',SORROWFUL:'Misterios Dolorosos',GLORIOUS:'Misterios Gloriosos'},
+  de:{JOYFUL:'Freudenreiche Geheimnisse',LUMINOUS:'Geheimnisse des Lichts',SORROWFUL:'Schmerzhafte Geheimnisse',GLORIOUS:'Glorreiche Geheimnisse'},
+};
+
+var DTITLES = {
+  JOYFUL:{
+    ko:['마리아께서 예수님을 잉태하심을 묵상합시다.','마리아께서 엘리사벳을 찾아보심을 묵상합시다.','마리아께서 예수님을 낳으심을 묵상합시다.','마리아께서 예수님을 성전에 바치심을 묵상합시다.','마리아께서 잃으셨던 예수님을 성전에서 찾으심을 묵상합시다.'],
+    ja:['お告げの神秘','ご訪問の神秘','ご降誕の神秘','ご奉献の神秘','ご発見の神秘'],
+    zh:['天使报喜','圣母访亲','耶稣圣诞','圣婴献于圣殿','在圣殿寻见耶稣'],
+    en:['The Annunciation','The Visitation','The Nativity','The Presentation','Finding Jesus in the Temple'],
+    it:["L'Annunciazione","La Visitazione","La Nascita","La Presentazione","Il Ritrovamento"],
+    fr:["L'Annonciation","La Visitation","La Nativité","La Présentation","Le Recouvrement"],
+    es:["La Anunciación","La Visitación","El Nacimiento","La Presentación","El Niño Jesús Hallado"],
+    de:["Die Verkündigung","Die Heimsuchung","Die Geburt","Die Darstellung","Der Zwölfjährige Jesus"],
+  },
+  LUMINOUS:{
+    ko:['예수님께서 세례 받으심을 묵상합시다.','예수님께서 카나에서 첫 기적을 행하심을 묵상합시다.','예수님께서 하느님 나라를 선포하심을 묵상합시다.','예수님께서 거룩하게 변모하심을 묵상합시다.','예수님께서 성체성사를 세우심을 묵상합시다.'],
+    ja:['洗礼の神秘','カナの奇跡','神の国宣布','ご変容','聖体制定'],
+    zh:['耶稣受洗','迦纳婚宴','宣讲天国','耶稣显圣容','圣体圣事的建立'],
+    en:['The Baptism of Jesus','The Wedding at Cana','The Proclamation of the Kingdom','The Transfiguration','The Institution of the Eucharist'],
+    it:['Il Battesimo','Le Nozze di Cana','La Proclamazione','La Trasfigurazione',"L'Eucaristia"],
+    fr:['Le Baptême','Les Noces de Cana','La Proclamation','La Transfiguration',"L'Eucharistie"],
+    es:['El Bautismo','Las Bodas de Caná','El Anuncio','La Transfiguración','La Eucaristía'],
+    de:['Die Taufe','Die Hochzeit zu Kana','Die Verkündigung','Die Verklärung','Die Eucharistie'],
+  },
+  SORROWFUL:{
+    ko:['예수님께서 우리를 위하여 피땀 흘리심을 묵상합시다.','예수님께서 우리를 위하여 매 맞으심을 묵상합시다.','예수님께서 우리를 위하여 가시관 쓰심을 묵상합시다.','예수님께서 우리를 위하여 십자가 지심을 묵상합시다.','예수님께서 우리를 위하여 십자가에 못 박혀 돌아가심을 묵상합시다.'],
+    ja:['ゲッセマネの苦悶','鞭打ち','茨の冠','十字架を担う','ご死去'],
+    zh:['山园祈祷','耶稣受鞭打','耶稣被戴茨冠','背负十字架','被钉十字架'],
+    en:['The Agony in the Garden','The Scourging','The Crowning with Thorns','The Carrying of the Cross','The Crucifixion'],
+    it:["L'Agonia","La Flagellazione","L'Incoronazione","La Salita al Calvario","La Crocifissione"],
+    fr:["L'Agonie","La Flagellation","Le Couronnement","Le Portement","La Crucifixion"],
+    es:["La Agonía","La Flagelación","La Coronación","Jesús Carga la Cruz","La Crucifixión"],
+    de:["Die Todesangst","Die Geißelung","Die Dornenkrönung","Die Kreuztragung","Die Kreuzigung"],
+  },
+  GLORIOUS:{
+    ko:['예수님께서 부활하심을 묵상합시다.','예수님께서 승천하심을 묵상합시다.','예수님께서 성령을 보내심을 묵상합시다.','예수님께서 마리아를 하늘에 불러올리심을 묵상합시다.','예수님께서 마리아께 천상 모후의 관을 씌우심을 묵상합시다.'],
+    ja:['ご復活','ご昇天','聖霊降臨','聖母被昇天','聖母戴冠'],
+    zh:['耶稣复活','耶稣升天','圣神降临','圣母蒙召升天','圣母加冕'],
+    en:['The Resurrection','The Ascension','The Descent of the Holy Spirit','The Assumption of Mary','The Coronation of Mary'],
+    it:['La Resurrezione',"L'Ascensione","La Pentecoste","L'Assunzione","L'Incoronazione"],
+    fr:['La Résurrection',"L'Ascension","La Pentecôte","L'Assomption","Le Couronnement"],
+    es:['La Resurrección','La Ascensión','Pentecostés','La Asunción','La Coronación'],
+    de:['Die Auferstehung','Die Himmelfahrt','Pfingsten','Die Aufnahme Mariens','Die Krönung Mariens'],
+  },
+};
+
+// ── Prayer texts ──
+var P = {
+  SIGN:{
+    ti:{ko:'성호경',ja:'十字のしるし',zh:'划十字圣号',en:'Sign of the Cross',it:'Segno della Croce',fr:'Signe de Croix',es:'Señal de la Cruz',de:'Kreuzzeichen'},
+    tx:{ko:'성부와 성자와 성령의 이름으로. 아멘.',ja:'父と子と聖霊のみ名によって。アーメン。',zh:'因父及子及圣神之名。阿门。',en:'In the name of the Father, and of the Son, and of the Holy Spirit. Amen.',it:'Nel nome del Padre e del Figlio e dello Spirito Santo. Amen.',fr:'Au nom du Père, et du Fils, et du Saint-Esprit. Amen.',es:'En el nombre del Padre, y del Hijo, y del Espíritu Santo. Amén.',de:'Im Namen des Vaters und des Sohnes und des Heiligen Geistes. Amen.'},
+  },
+  CREED:{
+    ti:{ko:'사도신경',ja:'使徒信条',zh:'使徒信经',en:"Apostles' Creed",it:'Credo degli Apostoli',fr:'Symbole des Apôtres',es:'Credo de los Apóstoles',de:'Apostolisches Glaubensbekenntnis'},
+    tx:{ko:'전능하신 천주 성부, 천지의 창조주를 저는 믿나이다. 그 외아들 우리 주 예수 그리스도님을 믿나이다. 그분께서는 성령으로 인하여 동정 마리아께 잉태되어 나시고, 본시오 빌라도 통치 아래서 고난을 받으시고, 십자가에 못 박혀 돌아가시고 묻히셨으며, 저승에 가시었다가, 사흘 만에 죽은 이들 가운데서 부활하시고, 하늘에 올라 전능하신 천주 성부 오른편에 앉으시며, 그리로부터 산 이와 죽은 이를 심판하러 오시리라 믿나이다. 성령을 믿으며, 거룩하고 보편된 교회와 모든 성인의 통공을 믿으며, 죄의 용서와 육신의 부활을 믿으며, 영원한 삶을 믿나이다. 아멘.',ja:'全能の父である神、天地の創造主を私は信じます。そのひとり子、私たちの主イエス・キリストを信じます。主は聖霊によって宿り、おとめマリアから生まれ、ポンティオ・ピラトのもとで苦しみを受け、十字架につけられて死に、葬られ、陰府に降り、三日目に死者の中から復活し、天に昇り、全能の父である神の右の座に着いておられます。そこから生者と死者を裁くために来られます。聖霊を信じ、聖なる公同の教会、聖徒の交わり、罪の赦し、体の復活、永遠のいのちを信じます。アーメン。',zh:'我信全能的父天主，天地万物的创造者。我信祂的独子，我们的主耶稣基督，祂因圣神降孕，由童贞玛利亚诞生，在般雀比拉多执政时蒙难，被钉于十字架，死后被安葬；祂下降阴府，第三天从死者中复活；祂升了天，坐在全能父天主的右边；将来要降来审判生者死者。我信圣神，我信圣而公教会，诸圣的相通，罪过的赦免，肉身的复活，并永恒的生命。阿们。',en:"I believe in God, the Father almighty, Creator of heaven and earth, and in Jesus Christ, his only Son, our Lord, who was conceived by the Holy Spirit, born of the Virgin Mary, suffered under Pontius Pilate, was crucified, died and was buried; he descended into hell; on the third day he rose again from the dead; he ascended into heaven, and is seated at the right hand of God the Father almighty; from there he will come to judge the living and the dead. I believe in the Holy Spirit, the holy catholic Church, the communion of saints, the forgiveness of sins, the resurrection of the body, and life everlasting. Amen.",it:'Credo in Dio, Padre onnipotente, Creatore del cielo e della terra; e in Gesù Cristo, suo unico Figlio, nostro Signore, il quale fu concepito di Spirito Santo, nacque da Maria Vergine, patì sotto Ponzio Pilato, fu crocifisso, morì e fu sepolto; discese agli inferi; il terzo giorno risuscitò da morte; salì al cielo, siede alla destra di Dio Padre onnipotente; di là verrà a giudicare i vivi e i morti. Credo nello Spirito Santo, la santa Chiesa cattolica, la comunione dei santi, la remissione dei peccati, la risurrezione della carne, la vita eterna. Amen.',fr:"Je crois en Dieu, le Père tout-puissant, Créateur du ciel et de la terre. Et en Jésus-Christ, son Fils unique, notre Seigneur, qui a été conçu du Saint-Esprit, est né de la Vierge Marie, a souffert sous Ponce Pilate, a été crucifié, est mort, a été enseveli, est descendu aux enfers; le troisième jour est ressuscité des morts, est monté aux cieux, est assis à la droite de Dieu le Père tout-puissant, d'où il viendra juger les vivants et les morts. Je crois au Saint-Esprit, à la sainte Église catholique, à la communion des saints, à la rémission des péchés, à la résurrection de la chair, à la vie éternelle. Amen.",es:'Creo en Dios, Padre todopoderoso, Creador del cielo y de la tierra. Creo en Jesucristo, su único Hijo, nuestro Señor, que fue concebido por obra y gracia del Espíritu Santo, nació de Santa María Virgen, padeció bajo el poder de Poncio Pilato, fue crucificado, muerto y sepultado, descendió a los infiernos, al tercer día resucitó de entre los muertos, subió a los cielos y está sentado a la derecha de Dios, Padre todopoderoso. Desde allí ha de venir a juzgar a vivos y muertos. Creo en el Espíritu Santo, la santa Iglesia católica, la comunión de los santos, el perdón de los pecados, la resurrección de la carne y la vida eterna. Amén.',de:'Ich glaube an Gott, den Vater, den Allmächtigen, den Schöpfer des Himmels und der Erde, und an Jesus Christus, seinen eingeborenen Sohn, unseren Herrn, empfangen durch den Heiligen Geist, geboren von der Jungfrau Maria, gelitten unter Pontius Pilatus, gekreuzigt, gestorben und begraben, hinabgestiegen in das Reich des Todes, am dritten Tage auferstanden von den Toten, aufgefahren in den Himmel; er sitzt zur Rechten Gottes, des allmächtigen Vaters; von dort wird er kommen, zu richten die Lebenden und die Toten. Ich glaube an den Heiligen Geist, die heilige katholische Kirche, Gemeinschaft der Heiligen, Vergebung der Sünden, Auferstehung der Toten und das ewige Leben. Amen.'},
+  },
+  LORDS:{
+    ti:{ko:'주님의 기도',ja:'主の祈り',zh:'天主经',en:"Lord's Prayer",it:'Padre Nostro',fr:'Notre Père',es:'Padre Nuestro',de:'Vater Unser'},
+    tx:{ko:'하늘에 계신 우리 아버지, 아버지의 이름이 거룩히 빛나시며, 아버지의 나라가 오시며, 아버지의 뜻이 하늘에서와 같이 땅에서도 이루어지소서. 오늘 저희에게 일용할 양식을 주시고, 저희에게 잘못한 이를 저희가 용서하오니, 저희 죄를 용서하시고, 저희를 유혹에 빠지지 않게 하시고, 악에서 구하소서. 아멘.',ja:'天におられるわたしたちの父よ、御名が崇められますように。御国が来ますように。御心が行われますように、天におけるように地の上にも。わたしたちに必要な糧を今日与えてください。わたしたちの負い目を赦してください、わたしたちも自分に負い目のある人を赦しましたように。わたしたちを誘惑に遭わせず、悪からお救いください。アーメン。',zh:'我们的天父，愿你的名受显扬，愿你的国来临，愿你的旨意奉行在人间，如同在天上。求你今天赏给我们日用的食粮，求你宽恕我们的罪过，如同我们宽恕别人一样，不要让我们陷入诱惑，但救我们免于凶恶。阿门。',en:'Our Father, who art in heaven, hallowed be thy name; thy kingdom come; thy will be done on earth as it is in heaven. Give us this day our daily bread; and forgive us our trespasses as we forgive those who trespass against us; and lead us not into temptation, but deliver us from evil. Amen.',it:'Padre nostro che sei nei cieli, sia santificato il tuo nome, venga il tuo regno, sia fatta la tua volontà come in cielo così in terra. Dacci oggi il nostro pane quotidiano, e rimetti a noi i nostri debiti come noi li rimettiamo ai nostri debitori, e non ci indurre in tentazione, ma liberaci dal male. Amen.',fr:"Notre Père qui es aux cieux, que ton nom soit sanctifié, que ton règne vienne, que ta volonté soit faite sur la terre comme au ciel. Donne-nous aujourd'hui notre pain de ce jour. Pardonne-nous nos offenses, comme nous pardonnons aussi à ceux qui nous ont offensés. Et ne nous soumets pas à la tentation, mais délivre-nous du mal. Amen.",es:'Padre nuestro, que estás en el cielo. Santificado sea tu nombre. Venga tu reino. Hágase tu voluntad en la tierra como en el cielo. Danos hoy nuestro pan de cada día. Perdona nuestras ofensas, como también nosotros perdonamos a los que nos ofenden. No nos dejes caer en tentación y líbranos del mal. Amén.',de:'Vater unser im Himmel, geheiligt werde dein Name. Dein Reich komme. Dein Wille geschehe, wie im Himmel so auf Erden. Unser tägliches Brot gib uns heute. Und vergib uns unsere Schuld, wie auch wir vergeben unsern Schuldigern. Und führe uns nicht in Versuchung, sondern erlöse uns von dem Bösen. Amen.'},
+  },
+  HAIL:{
+    ti:{ko:'성모송',ja:'アヴェ・マリア',zh:'圣母经',en:'Hail Mary',it:'Ave Maria',fr:'Je vous salue, Marie',es:'Ave María',de:'Gegrüßet seist du, Maria'},
+    tx:{ko:'은총이 가득하신 마리아님, 기뻐하소서. 주님께서 함께 계시니, 여인 중에 복되시며, 태중의 아들 예수님 또한 복되시나이다. 천주의 성모 마리아님, 이제와 저희 죽을 때에 저희 죄인을 위하여 빌어주소서. 아멘.',ja:'アヴェ・マリア、恵みあふれる方、主はあなたとともにおられます。あなたは女のうちで祝福された方、ご胎内の御子イエスも祝福されています。神の母聖マリア、わたしたち罪人のために、今も、臨終の時も祈ってください。アーメン。',zh:'万福玛利亚，你充满圣宠，主与你同在，你在妇女中受赞颂，你的亲子耶稣同受赞颂。天主圣母玛利亚，求你现在和我们临终时，为我们罪人祈求天主。阿门。',en:'Hail Mary, full of grace, the Lord is with thee. Blessed art thou amongst women, and blessed is the fruit of thy womb, Jesus. Holy Mary, Mother of God, pray for us sinners, now and at the hour of our death. Amen.',it:"Ave Maria, piena di grazia, il Signore è con te. Tu sei benedetta fra le donne e benedetto è il frutto del tuo seno, Gesù. Santa Maria, Madre di Dio, prega per noi peccatori, adesso e nell'ora della nostra morte. Amen.",fr:"Je vous salue, Marie, pleine de grâce; le Seigneur est avec vous. Vous êtes bénie entre toutes les femmes et Jésus, le fruit de vos entrailles, est béni. Sainte Marie, Mère de Dieu, priez pour nous, pauvres pécheurs, maintenant et à l'heure de notre mort. Amen.",es:"Dios te salve, María, llena eres de gracia, el Señor es contigo. Bendita Tú eres entre todas las mujeres, y bendito es el fruto de tu vientre, Jesús. Santa María, Madre de Dios, ruega por nosotros pecadores, ahora y en la hora de nuestra muerte. Amén.",de:'Gegrüßet seist du, Maria, voll der Gnade, der Herr ist mit dir. Du bist gebenedeit unter den Frauen, und gebenedeit ist die Frucht deines Leibes, Jesus. Heilige Maria, Mutter Gottes, bitte für uns Sünder jetzt und in der Stunde unseres Todes. Amen.'},
+  },
+  GLORY:{
+    ti:{ko:'영광송',ja:'栄唱',zh:'光荣颂',en:'Glory Be',it:'Gloria al Padre',fr:'Gloire au Père',es:'Gloria al Padre',de:'Ehre sei dem Vater'},
+    tx:{ko:'영광이 성부와 성자와 성령께, 처음과 같이 이제와 항상 영원히. 아멘.',ja:'栄光は父と子と聖霊に、初めのように今もいつも世々に。アーメン。',zh:'愿光荣归于父，及子，及圣神，起初如何，今日亦然，直到永远。阿门。',en:'Glory be to the Father, and to the Son, and to the Holy Spirit, as it was in the beginning, is now, and ever shall be, world without end. Amen.',it:'Gloria al Padre e al Figlio e allo Spirito Santo, come era nel principio e ora e sempre nei secoli dei secoli. Amen.',fr:'Gloire au Père, et au Fils, et au Saint-Esprit, comme il était au commencement, maintenant et toujours, dans les siècles des siècles. Amen.',es:'Gloria al Padre, y al Hijo, y al Espíritu Santo. Como era en el principio, ahora y siempre, por los siglos de los siglos. Amén.',de:'Ehre sei dem Vater und dem Sohn und dem Heiligen Geist, wie es war im Anfang, jetzt und in Ewigkeit. Amen.'},
+  },
+  FATIMA:{
+    ti:{ko:'구원송',ja:'ファティマの祈り',zh:'法蒂玛祷文',en:'Fatima Prayer',it:'Preghiera di Fatima',fr:'Prière de Fatima',es:'Oración de Fátima',de:'Fatima-Gebet'},
+    tx:{ko:'예수님, 저희 죄를 용서하시며, 저희를 지옥 불에서 구하시고, 연옥 영혼을 돌보시며, 가장 버림받은 영혼을 돌보소서.',ja:'主イエスよ、私たちの罪をゆるし、地獄の火からお救いください。すべての魂を天国へお導きください。アーメン。',zh:'我主耶稣，求你赦免我们的罪，拯救我们免于地狱之火，引领所有灵魂进入天堂。阿门。',en:'O my Jesus, forgive us our sins, save us from the fires of hell, lead all souls to heaven, especially those in most need of thy mercy.',it:"O Gesù mio, perdona i nostri peccati, preservaci dal fuoco dell'inferno, conduci in paradiso tutte le anime. Amen.",fr:"Ô mon Jésus, pardonnez-nous nos péchés, préservez-nous du feu de l'enfer, conduisez au ciel toutes les âmes. Amen.",es:"Oh Jesús mío, perdona nuestros pecados, líbranos del fuego del infierno, lleva al cielo a todas las almas. Amén.",de:'O mein Jesus, verzeih uns unsere Sünden, bewahre uns vor dem Feuer der Hölle, führe alle Seelen in den Himmel. Amen.'},
+  },
+  SALVE:{
+    ti:{ko:'살베 레지나 (성모 찬송)',ja:'元后あわれみの母',zh:'万福母后',en:'Salve Regina',it:'Salve Regina',fr:'Salve Regina',es:'Salve Regina',de:'Salve Regina'},
+    tx:{ko:'모후이시며 사랑이 넘친 어머니, 우리의 생명, 기쁨, 희망이시여, 당신 우러러 하와의 그 자손들이 눈물을 흘리며 부르짖나이다, 슬픔의 골짜기에서. 우리들의 보호자 성모님, 불쌍한 저희를 인자로운 눈으로 굽어보소서. 귀양살이 끝날 때에 당신의 아들 우리 주 예수님 뵙게 하소서. 너그러우시고 자애로우시며 오! 아름다우신 동정 마리아님.',ja:'元后あわれみの母よ、われらの命、喜び、希望よ、あなたをたたえます。エワの追放された子らは、あなたに向かって呼び叫び、この涙の谷から泣きながら嘆きながら叫びをあなたに送ります。あわれみ深い取り次ぎ手よ、あなたの慈悲のまなざしをわれらに向け、この流浪ののちに、祝されたあなたの胎の実イエスを、われらに示してください。おお、慈悲深いかた、おお、優しいかた、おお、甘美なおとめマリアよ。',zh:'万福，母后，慈悲之母，我们的生命、甘饴与希望，万福。厄娃的子孙，在此哀号泣告，在此涕泣悲叹。我们的保护者，求你转过慈目垂顾我们，我们流亡期满之后，使我们得见你圣子耶稣。仁慈的、爱人的、甘饴的童贞玛利亚。',en:'Hail, Holy Queen, Mother of Mercy, our life, our sweetness and our hope. To thee do we cry, poor banished children of Eve. To thee do we send up our sighs, mourning and weeping in this valley of tears. Turn then, most gracious Advocate, thine eyes of mercy towards us. And after this our exile, show unto us the blessed fruit of thy womb, Jesus. O clement, O loving, O sweet Virgin Mary.',it:"Salve, Regina, Madre di misericordia, vita, dolcezza e speranza nostra, salve. A te ricorriamo, esuli figli di Eva; a te sospiriamo, gementi e piangenti in questa valle di lacrime. Orsù dunque, avvocata nostra, rivolgi a noi gli occhi tuoi misericordiosi. E mostraci, dopo questo esilio, Gesù, il frutto benedetto del tuo seno. O clemente, o pia, o dolce Vergine Maria.",fr:"Salut, ô Reine, Mère de miséricorde, notre vie, notre douceur et notre espérance, salut! Enfants d'Ève, exilés, nous crions vers vous; vers vous nous soupirons, gémissant et pleurant dans cette vallée de larmes. Ô vous, notre avocate, tournez vers nous vos yeux miséricordieux. Et après cet exil, montrez-nous Jésus, le fruit béni de vos entrailles. Ô clémente, ô miséricordieuse, ô douce Vierge Marie.",es:"Dios te salve, Reina y Madre de misericordia, vida, dulzura y esperanza nuestra. Dios te salve. A ti llamamos los desterrados hijos de Eva. A ti suspiramos, gimiendo y llorando en este valle de lágrimas. Ea, pues, Señora, abogada nuestra, vuelve a nosotros esos tus ojos misericordiosos. Y después de este destierro, muéstranos a Jesús, fruto bendito de tu vientre. Oh clemente, oh piadosa, oh dulce Virgen María.",de:'Sei gegrüßt, o Königin, Mutter der Barmherzigkeit, unser Leben, unsere Wonne und unsere Hoffnung, sei gegrüßt! Zu dir rufen wir verbannte Kinder Evas; zu dir seufzen wir trauernd und weinend in diesem Tal der Tränen. Wohlan denn, unsere Fürsprecherin, wende deine barmherzigen Augen uns zu, und nach diesem Elend zeige uns Jesus, die gebenedeite Frucht deines Leibes. O gütige, o milde, o süße Jungfrau Maria.'},
+  },
+  POPE:{
+    ti:{ko:'교황님과 교회를 위한 기도',ja:'教皇と教会のための祈り',zh:'为教宗和教会祈祷',en:'Prayer for the Pope and the Church',it:'Preghiera per il Papa',fr:"Prière pour le Pape",es:'Oración por el Papa',de:'Gebet für den Papst'},
+    tx:{ko:'교황님과 교회를 위해 기도합시다.',ja:'教皇と教会のために祈りましょう。',zh:'让我们为教宗和教会祈祷。',en:'Let us pray for the Pope and the Church.',it:'Preghiamo per il Papa e la Chiesa.',fr:"Prions pour le Pape et l'Église.",es:'Oremos por el Papa y la Iglesia.',de:'Beten wir für den Papst und die Kirche.'},
+  },
+};
+
+// ── Sequence builder ──
+function buildSeq(mtype){
+  var s=[], add=function(t,e){s.push(Object.assign({t:t},e||{}))}; 
+  add('SIGN'); add('CREED'); add('LORDS'); 
+  add('HAIL',{r:1,tot:3,d:0}); add('HAIL',{r:2,tot:3,d:0}); add('HAIL',{r:3,tot:3,d:0});
+  add('GLORY'); add('FATIMA');
+  for(var d=1;d<=5;d++){
+    add('MYST',{d:d,di:d-1,mt:mtype});
+    add('LORDS',{d:d});
+    for(var i=1;i<=10;i++) add('HAIL',{r:i,tot:10,d:d});
+    add('GLORY',{d:d}); add('FATIMA',{d:d});
+  }
+  add('SALVE'); add('POPE'); add('LORDS'); add('HAIL',{r:1,tot:1,d:0}); add('GLORY');
+  add('SIGN'); add('DONE');
+  return s;
+}
+
+// ── Day → mystery ──
+function todayMyst(){
+  var d=new Date().getDay();
+  if(d===1||d===6) return 'JOYFUL';
+  if(d===2||d===5) return 'SORROWFUL';
+  if(d===0||d===3) return 'GLORIOUS';
+  return 'LUMINOUS';
+}
+
+// ── State ──
+var lang='ko', seq=[], idx=0, isSpeaking=false, isPaused=false;
+
+// ── init ──
+window.onload = function(){
+  lang = load('lang','ko');
+  document.getElementById('sel-lang').value = lang;
+  applyLang();
+
+  // Mystery mode
+  var mm = load('mysteryMode','day');
+  document.querySelectorAll('[name=myst]').forEach(function(r){ r.checked = r.value===mm; });
+  document.getElementById('manual-row').style.display = mm==='manual'?'block':'none';
+  rehigh('rg-m');
+
+  // Manual mystery
+  var selM = document.getElementById('sel-myst');
+  selM.value = load('manualMyst','JOYFUL');
+
+  // Voice
+  var vm = load('voice','full');
+  document.querySelectorAll('[name=voice]').forEach(function(r){ r.checked = r.value===vm; });
+  rehigh('rg-v');
+
+  // Speed
+  var sp = parseFloat(load('speed','0.9'));
+  document.getElementById('rng-speed').value = Math.round(sp*100);
+  document.getElementById('lbl-speed').textContent = sp.toFixed(1)+'x';
+};
+
+function applyLang(){
+  var u = UI[lang]||UI.ko;
+  document.getElementById('ui-h1').textContent = u.h1;
+  document.title = u.h1;
+  document.getElementById('ui-ll').textContent = u.ll;
+  document.getElementById('ui-ml').textContent = u.ml;
+  document.getElementById('ui-mday').textContent = u.mday;
+  document.getElementById('ui-mman').textContent = u.mman;
+  document.getElementById('ui-vl').textContent = u.vl;
+  document.getElementById('ui-vfull').textContent = u.vfull;
+  document.getElementById('ui-vtitle').textContent = u.vtitle;
+  document.getElementById('ui-sl').textContent = u.sl;
+  document.getElementById('btn-start').textContent = u.start;
+  document.getElementById('btn-prev').textContent = u.prev;
+  document.getElementById('btn-next').textContent = u.next;
+  document.getElementById('btn-stop').textContent = u.stop;
+  // Update mystery spinner
+  var mords=['JOYFUL','LUMINOUS','SORROWFUL','GLORIOUS'];
+  var selM=document.getElementById('sel-myst'), cur=selM.value;
+  selM.innerHTML = mords.map(function(m){return '<option value="'+m+'">'+(MNAMES[lang]||MNAMES.ko)[m]+'</option>';}).join('');
+  selM.value = cur;
+  // Today label
+  var days={ko:['일','월','화','수','목','금','토'],ja:['日','月','火','水','木','金','土'],zh:['日','一','二','三','四','五','六'],en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],it:['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],fr:['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],es:['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],de:['So','Mo','Di','Mi','Do','Fr','Sa']};
+  var d=new Date().getDay();
+  var dn=(days[lang]||days.ko)[d];
+  var mn=(MNAMES[lang]||MNAMES.ko)[todayMyst()];
+  document.getElementById('ui-today').textContent = dn+': '+mn;
+  // Update TTS btn label if on prayer screen
+  updateTtsBtn();
+}
+
+function onLangChange(v){ lang=v; save('lang',v); applyLang(); }
+function onMystMode(v){ save('mysteryMode',v); document.getElementById('manual-row').style.display=v==='manual'?'block':'none'; rehigh('rg-m'); }
+function onSpeed(v){ var sp=v/100; save('speed',sp); document.getElementById('lbl-speed').textContent=sp.toFixed(1)+'x'; }
+function rehigh(gid){ document.getElementById(gid).querySelectorAll('.ri').forEach(function(el){ el.classList.toggle('on',el.querySelector('input').checked); }); }
+
+// ── Prayer start ──
+function startPrayer(){
+  var mm=load('mysteryMode','day');
+  var mt=mm==='day'?todayMyst():(load('manualMyst','JOYFUL'));
+  seq=buildSeq(mt); idx=0;
+  showScreen('prayer');
+  renderStep();
+}
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+function stepContent(step){
+  var lg=lang, mn=MNAMES[lg]||MNAMES.ko;
+  if(step.t==='MYST'){
+    var mname=mn[step.mt], dtitle=(DTITLES[step.mt]||DTITLES.JOYFUL)[lg];
+    if(!dtitle) dtitle=(DTITLES[step.mt]||DTITLES.JOYFUL).en;
+    var title=lg==='ko'?(mname+' '+(step.d)+'단 - '+dtitle[step.di]):(mname+' '+(step.d)+' – '+dtitle[step.di]);
+    return {title:title, text:title};
+  }
+  if(step.t==='DONE'){
+    var msgs={ko:'묵주기도를 모두 바쳤습니다.\n감사합니다. ✝',ja:'ロザリオを完唱しました。\nありがとう。✝',zh:'玫瑰经已诵毕。感谢您。✝',en:'The Rosary is complete.\nThank you. ✝',it:'Il Rosario è completo. Grazie. ✝',fr:'Le Chapelet est terminé. Merci. ✝',es:'El Rosario está completo. Gracias. ✝',de:'Der Rosenkranz ist abgeschlossen. Danke. ✝'};
+    var titles={ko:'묵주기도 완료',ja:'ロザリオ完了',zh:'玫瑰经完成',en:'Rosary Complete',it:'Rosario Completato',fr:'Chapelet Terminé',es:'Rosario Completado',de:'Rosenkranz Abgeschlossen'};
+    return {title:titles[lg]||titles.en, text:msgs[lg]||msgs.en};
+  }
+  var p=P[step.t];
+  if(!p) return {title:'?',text:'?'};
+  var tis=p.ti[lg]||p.ti.en, txs=p.tx[lg]||p.tx.en;
+  if(step.t==='HAIL' && step.tot>1) tis=tis+' ('+step.r+'/'+step.tot+')';
+  return {title:tis, text:txs};
+}
+
+function renderStep(){
+  var step=seq[idx];
+  var u=UI[lang]||UI.ko;
+  // Find current mystery
+  var mt=null;
+  for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
+  document.getElementById('p-mname').textContent = mt ? (MNAMES[lang]||MNAMES.ko)[mt] : '';
+  document.getElementById('p-prog').textContent = (idx+1)+' / '+seq.length;
+  document.getElementById('p-bar').style.width = (idx/(seq.length-1)*100)+'%';
+  // Decade
+  var dec='';
+  if(step.d>0){
+    var dpfx={ko:'제 ',ja:'第',zh:'第',en:'Decade ',it:'',fr:'',es:'',de:''};
+    var dsfx={ko:'단',ja:'玄義',zh:'端',en:'',it:'° Mistero',fr:'e Mystère',es:'. Misterio',de:'. Jahrzehnt'};
+    dec=(dpfx[lang]||'')+(step.d)+(dsfx[lang]||'');
+  }
+  document.getElementById('p-decade').textContent = dec;
+  var c=stepContent(step);
+  document.getElementById('p-title').textContent = c.title;
+  if(step.t==='DONE'){
+    document.getElementById('p-text').innerHTML='<div class="done-box"><div class="done-cross">✝</div><div class="done-msg">'+c.text.replace(/\n/g,'<br>')+'</div></div>';
+  } else {
+    document.getElementById('p-text').textContent = c.text;
+  }
+  document.getElementById('btn-prev').disabled = idx===0;
+  document.getElementById('btn-next').disabled = idx===seq.length-1;
+  // Stop TTS
+  stopTts();
+  updateTtsBtn();
+}
+
+function goNext(){
+  if(idx<seq.length-1){ idx++; renderStep(); }
+}
+function goPrev(){
+  if(idx>0){ idx--; renderStep(); }
+}
+
+// ── TTS ──
+var TTS_LOCALE={ko:'ko-KR',ja:'ja-JP',zh:'zh-CN',en:'en-US',it:'it-IT',fr:'fr-FR',es:'es-ES',de:'de-DE'};
+
+function stopTts(){
+  if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(e){} }
+  isSpeaking=false; isPaused=false;
+}
+
+function updateTtsBtn(){
+  var u=UI[lang]||UI.ko;
+  var btn=document.getElementById('btn-tts');
+  if(!btn) return;
+  var step=seq[idx];
+  if(step && step.t==='DONE'){ btn.disabled=true; btn.textContent=u.play; return; }
+  btn.disabled=false;
+  if(isPaused) btn.textContent=u.resume;
+  else if(isSpeaking) btn.textContent=u.pause;
+  else btn.textContent=u.play;
+}
+
+function setStatus(k){
+  var u=UI[lang]||UI.ko;
+  document.getElementById('tts-st').textContent = k?(u[k]||''):'';
+}
+
+function toggleTts(){
+  if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
+  if(isPaused){
+    try{ window.speechSynthesis.resume(); }catch(e){}
+    isPaused=false; isSpeaking=true;
+    updateTtsBtn(); setStatus('speaking');
+    return;
+  }
+  if(isSpeaking){
+    try{ window.speechSynthesis.pause(); }catch(e){}
+    isPaused=true; isSpeaking=false;
+    updateTtsBtn(); setStatus('paused');
+    return;
+  }
+  // Start speaking — called from user gesture, works on iOS
+  var step=seq[idx];
+  if(!step||step.t==='DONE') return;
+  var vm=load('voice','full');
+  var c=stepContent(step);
+  var txt=vm==='title'?c.title:c.text;
+  var sp=parseFloat(load('speed','0.9'));
+  var utt=new SpeechSynthesisUtterance(txt);
+  utt.lang=TTS_LOCALE[lang]||'ko-KR';
+  utt.rate=sp;
+  utt.onstart=function(){ isSpeaking=true; isPaused=false; updateTtsBtn(); setStatus('speaking'); };
+  utt.onend=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); };
+  utt.onerror=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); };
+  window.speechSynthesis.speak(utt);
+}
+
+function doStop(){
+  var u=UI[lang]||UI.ko;
+  if(confirm(u.confirm)){ stopTts(); showScreen('settings'); }
+}
+</script>
+</body>
+</html>

@@ -47,13 +47,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .p-text{font-size:16px;color:#444;line-height:1.8;white-space:pre-wrap}
 .p-foot{padding:12px 16px 24px;background:#F5F0FF;border-top:1px solid #DDD0F7}
 .tts-st{text-align:center;font-size:12px;color:#5C2D91;margin-bottom:6px;min-height:16px}
-.nav-row{display:flex;gap:8px;margin-bottom:8px}
-.btn-nav{flex:1;padding:14px;background:#5C2D91;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer}
-.btn-nav:disabled{background:#bbb;cursor:default}
-.btn-nav:active:not(:disabled){background:#3D1A6E}
-.btn-tts{width:100%;padding:12px;background:#fff;color:#5C2D91;border:2px solid #5C2D91;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer}
-.btn-tts:active{background:#EEE8FF}
-.btn-tts:disabled{opacity:.4;cursor:default}
+.nav-row{display:flex;gap:8px;margin-bottom:8px;align-items:stretch}
+.btn-prev{flex:0 0 72px;padding:10px 0;background:#9B7BC4;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;min-height:52px}
+.btn-prev:disabled{background:#ccc;cursor:default}
+.btn-prev:active:not(:disabled){background:#7A5AA3}
+.btn-main{flex:1;padding:18px 10px;background:#5C2D91;color:#fff;border:none;border-radius:10px;font-size:22px;font-weight:700;cursor:pointer;min-height:64px;letter-spacing:.5px}
+.btn-main:disabled{background:#bbb;cursor:default}
+.btn-main:active:not(:disabled){background:#3D1A6E}
 .btn-stop{display:block;width:100%;padding:10px;background:transparent;color:#888;border:none;font-size:13px;cursor:pointer;margin-top:4px}
 .done-box{text-align:center;padding:48px 20px}
 .done-cross{font-size:56px;margin-bottom:16px}
@@ -138,8 +138,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="p-foot">
     <div class="tts-st" id="tts-st"></div>
     <div class="nav-row">
-      <button class="btn-nav" id="btn-prev" onclick="goPrev()">◀ 이전</button>
-      <button class="btn-nav btn-main" id="btn-main" onclick="mainAction()">▶ 낭독</button>
+      <button class="btn-prev" id="btn-prev" onclick="goPrev()">◀ 이전</button>
+      <button class="btn-main" id="btn-main" onclick="mainAction()">▶ 낭독</button>
     </div>
     <button class="btn-stop" onclick="doStop()">✕ 기도 중단</button>
   </div>

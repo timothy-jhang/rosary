@@ -379,16 +379,14 @@ function stepContent(step){
   return {title:tis, text:txs};
 }
 
-function renderStep(autoSpeak){
+function refreshDisplay(){
+  // UI만 갱신 (TTS 건드리지 않음)
   var step=seq[idx];
-  var u=UI[lang]||UI.ko;
-  // Find current mystery
   var mt=null;
   for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
   document.getElementById('p-mname').textContent = mt ? (MNAMES[lang]||MNAMES.ko)[mt] : '';
   document.getElementById('p-prog').textContent = (idx+1)+' / '+seq.length;
   document.getElementById('p-bar').style.width = (idx/(seq.length-1)*100)+'%';
-  // Decade
   var dec='';
   if(step.d>0){
     var dpfx={ko:'제 ',ja:'第',zh:'第',en:'Decade ',it:'',fr:'',es:'',de:''};
@@ -404,17 +402,23 @@ function renderStep(autoSpeak){
     document.getElementById('p-text').textContent = c.text;
   }
   document.getElementById('btn-prev').disabled = idx===0;
-  document.getElementById('btn-main').disabled = (idx===seq.length-1 && !isSpeaking);
-  // TTS 처리: autoSpeak(MediaSession)이면 계속 낭독, 아니면 중지
-  if(autoSpeak){ speakStep(); }
-  else { stopTts(true); updateTtsBtn(); }
+  document.getElementById('btn-main').disabled = (step.t==='DONE');
+  updateTtsBtn();
+}
+
+function renderStep(autoSpeak){
+  refreshDisplay();
+  if(!autoSpeak){ stopTts(true); }
 }
 
 function goNext(){
-  if(idx<seq.length-1){ idx++; renderStep(); }
+  // 수동 이동: 자동재생 중지 후 이동
+  _autoPlay=false; stopTts(true);
+  if(idx<seq.length-1){ idx++; refreshDisplay(); }
 }
 function goPrev(){
-  if(idx>0){ idx--; renderStep(); }
+  _autoPlay=false; stopTts(true);
+  if(idx>0){ idx--; refreshDisplay(); }
 }
 
 // ── TTS ──
@@ -461,16 +465,16 @@ function stopTts(keepSession){
   updateMediaState(false);
 }
 
+var _autoPlay = false; // 자동 연속 낭독 플래그
+
 function updateTtsBtn(){
   var u=UI[lang]||UI.ko;
   var btn=document.getElementById('btn-main');
   if(!btn) return;
   var step=seq[idx];
-  var isLast = idx===seq.length-1;
   if(step && step.t==='DONE'){ btn.disabled=true; btn.textContent=u.play; return; }
   btn.disabled=false;
-  // 낭독 중이면 "다음 ▶", 아니면 "▶ 낭독"
-  btn.textContent = isSpeaking ? u.next : u.play;
+  btn.textContent = _autoPlay ? u.pause : u.play;
 }
 
 function setStatus(k){
@@ -478,9 +482,17 @@ function setStatus(k){
   document.getElementById('tts-st').textContent = k?(u[k]||''):'';
 }
 
+function updateMeta(){
+  // MediaSession 메타데이터 업데이트
+  var step=seq[idx]; if(!step) return;
+  var c=stepContent(step);
+  var mt=null; for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
+  setupMediaSession(c.title, mt?(MNAMES[lang]||MNAMES.ko)[mt]:'묵주기도');
+}
+
 function speakStep(){
   var step=seq[idx];
-  if(!step||step.t==='DONE') return;
+  if(!step||step.t==='DONE'){ _autoPlay=false; updateTtsBtn(); return; }
   if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(e){} }
   var vm=load('voice','full');
   var c=stepContent(step);
@@ -490,30 +502,40 @@ function speakStep(){
   utt.lang=TTS_LOCALE[lang]||'ko-KR';
   utt.rate=sp;
   utt.onstart=function(){ isSpeaking=true; isPaused=false; updateTtsBtn(); setStatus('speaking'); updateMediaState(true); };
-  utt.onend=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
-  utt.onerror=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
-  // MediaSession 메타데이터 업데이트
-  var mt=null; for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
-  setupMediaSession(c.title, mt?(MNAMES[lang]||MNAMES.ko)[mt]:'묵주기도');
+  utt.onend=function(){
+    isSpeaking=false; isPaused=false; updateMediaState(false);
+    if(_autoPlay && idx<seq.length-1){
+      // 자동으로 다음 단계로 이동
+      idx++;
+      refreshDisplay();
+      speakStep();
+    } else {
+      _autoPlay=false; updateTtsBtn(); setStatus('');
+    }
+  };
+  utt.onerror=function(){ isSpeaking=false; isPaused=false; _autoPlay=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
+  updateMeta();
   window.speechSynthesis.speak(utt);
 }
 
 function mainAction(){
   if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
-  if(isSpeaking){
-    // 낭독 중 → 다음 단계로 이동 후 낭독
-    if(idx<seq.length-1){ idx++; renderStep(true); }
+  if(_autoPlay){
+    // 실행 중 → 중지
+    _autoPlay=false;
+    stopTts(false);
     return;
   }
-  // 정지 상태 → 현재 단계 낭독 시작 (사용자 제스처에서 호출 → iOS 정상 동작)
+  // 시작: 현재 단계부터 끝까지 자동 낭독
+  _autoPlay=true;
   startSilentAudio();
   speakStep();
 }
 
 function toggleTts(){
-  // MediaSession play/pause 핸들러용 (직접 버튼은 mainAction 사용)
-  if(isSpeaking){ stopTts(true); }
-  else { startSilentAudio(); speakStep(); }
+  // MediaSession play/pause 핸들러용
+  if(_autoPlay){ _autoPlay=false; stopTts(false); }
+  else { _autoPlay=true; startSilentAudio(); speakStep(); }
 }
 
 function doStop(){

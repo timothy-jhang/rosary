@@ -138,10 +138,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="p-foot">
     <div class="tts-st" id="tts-st"></div>
     <div class="nav-row">
-      <button class="btn-nav" id="btn-prev" onclick="goPrev()">◀</button>
-      <button class="btn-nav" id="btn-next" onclick="goNext()">▶</button>
+      <button class="btn-nav" id="btn-prev" onclick="goPrev()">◀ 이전</button>
+      <button class="btn-nav btn-main" id="btn-main" onclick="mainAction()">▶ 낭독</button>
     </div>
-    <button class="btn-tts" id="btn-tts" onclick="toggleTts()">▶ 낭독</button>
     <button class="btn-stop" onclick="doStop()">✕ 기도 중단</button>
   </div>
 </div>
@@ -324,7 +323,7 @@ function applyLang(){
   document.getElementById('ui-sl').textContent = u.sl;
   document.getElementById('btn-start').textContent = u.start;
   document.getElementById('btn-prev').textContent = u.prev;
-  document.getElementById('btn-next').textContent = u.next;
+  // btn-next removed (merged into btn-main)
   document.getElementById('btn-stop').textContent = u.stop;
   // Update mystery spinner
   var mords=['JOYFUL','LUMINOUS','SORROWFUL','GLORIOUS'];
@@ -405,7 +404,7 @@ function renderStep(autoSpeak){
     document.getElementById('p-text').textContent = c.text;
   }
   document.getElementById('btn-prev').disabled = idx===0;
-  document.getElementById('btn-next').disabled = idx===seq.length-1;
+  document.getElementById('btn-main').disabled = (idx===seq.length-1 && !isSpeaking);
   // TTS 처리: autoSpeak(MediaSession)이면 계속 낭독, 아니면 중지
   if(autoSpeak){ speakStep(); }
   else { stopTts(true); updateTtsBtn(); }
@@ -464,14 +463,14 @@ function stopTts(keepSession){
 
 function updateTtsBtn(){
   var u=UI[lang]||UI.ko;
-  var btn=document.getElementById('btn-tts');
+  var btn=document.getElementById('btn-main');
   if(!btn) return;
   var step=seq[idx];
+  var isLast = idx===seq.length-1;
   if(step && step.t==='DONE'){ btn.disabled=true; btn.textContent=u.play; return; }
   btn.disabled=false;
-  if(isPaused) btn.textContent=u.resume;
-  else if(isSpeaking) btn.textContent=u.pause;
-  else btn.textContent=u.play;
+  // 낭독 중이면 "다음 ▶", 아니면 "▶ 낭독"
+  btn.textContent = isSpeaking ? u.next : u.play;
 }
 
 function setStatus(k){
@@ -499,23 +498,22 @@ function speakStep(){
   window.speechSynthesis.speak(utt);
 }
 
-function toggleTts(){
+function mainAction(){
   if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
-  if(isPaused){
-    try{ window.speechSynthesis.resume(); }catch(e){}
-    isPaused=false; isSpeaking=true;
-    updateTtsBtn(); setStatus('speaking'); updateMediaState(true);
-    return;
-  }
   if(isSpeaking){
-    try{ window.speechSynthesis.pause(); }catch(e){}
-    isPaused=true; isSpeaking=false;
-    updateTtsBtn(); setStatus('paused'); updateMediaState(false);
+    // 낭독 중 → 다음 단계로 이동 후 낭독
+    if(idx<seq.length-1){ idx++; renderStep(true); }
     return;
   }
-  // 최초 재생: 사용자 제스처에서 호출되어야 iOS에서 동작
+  // 정지 상태 → 현재 단계 낭독 시작 (사용자 제스처에서 호출 → iOS 정상 동작)
   startSilentAudio();
   speakStep();
+}
+
+function toggleTts(){
+  // MediaSession play/pause 핸들러용 (직접 버튼은 mainAction 사용)
+  if(isSpeaking){ stopTts(true); }
+  else { startSilentAudio(); speakStep(); }
 }
 
 function doStop(){

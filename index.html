@@ -380,7 +380,7 @@ function stepContent(step){
   return {title:tis, text:txs};
 }
 
-function renderStep(){
+function renderStep(autoSpeak){
   var step=seq[idx];
   var u=UI[lang]||UI.ko;
   // Find current mystery
@@ -406,9 +406,9 @@ function renderStep(){
   }
   document.getElementById('btn-prev').disabled = idx===0;
   document.getElementById('btn-next').disabled = idx===seq.length-1;
-  // Stop TTS
-  stopTts();
-  updateTtsBtn();
+  // TTS 처리: autoSpeak(MediaSession)이면 계속 낭독, 아니면 중지
+  if(autoSpeak){ speakStep(); }
+  else { stopTts(true); updateTtsBtn(); }
 }
 
 function goNext(){
@@ -421,9 +421,50 @@ function goPrev(){
 // ── TTS ──
 var TTS_LOCALE={ko:'ko-KR',ja:'ja-JP',zh:'zh-CN',en:'en-US',it:'it-IT',fr:'fr-FR',es:'es-ES',de:'de-DE'};
 
-function stopTts(){
+// ── Silent Audio (iOS MediaSession 활성화용) ──
+var _actx=null, _snode=null;
+function startSilentAudio(){
+  try{
+    if(!_actx) _actx=new(window.AudioContext||window.webkitAudioContext)();
+    if(_actx.state==='suspended') _actx.resume();
+    if(_snode){try{_snode.stop();}catch(e){}}
+    var buf=_actx.createBuffer(1,_actx.sampleRate,_actx.sampleRate);
+    _snode=_actx.createBufferSource();
+    _snode.buffer=buf; _snode.loop=true;
+    _snode.connect(_actx.destination); _snode.start();
+  }catch(e){}
+}
+function stopSilentAudio(){
+  try{if(_snode){_snode.stop();_snode=null;}}catch(e){}
+  try{if(_actx){_actx.close();_actx=null;}}catch(e){}
+}
+
+// ── MediaSession ──
+function setupMediaSession(title,artist){
+  if(!('mediaSession' in navigator)) return;
+  try{
+    navigator.mediaSession.metadata=new MediaMetadata({title:title||'묵주기도',artist:artist||'',album:'✝ 묵주기도'});
+    navigator.mediaSession.setActionHandler('play',function(){ if(!isSpeaking) speakStep(); });
+    navigator.mediaSession.setActionHandler('pause',function(){ if(isSpeaking) toggleTts(); });
+    navigator.mediaSession.setActionHandler('previoustrack',function(){ msNav(-1); });
+    navigator.mediaSession.setActionHandler('nexttrack',function(){ msNav(1); });
+  }catch(e){}
+}
+function msNav(dir){
+  // MediaSession next/prev: navigate + auto-speak
+  if(dir>0 && idx<seq.length-1){ idx++; renderStep(true); }
+  else if(dir<0 && idx>0){ idx--; renderStep(true); }
+}
+function updateMediaState(playing){
+  if(!('mediaSession' in navigator)) return;
+  try{ navigator.mediaSession.playbackState=playing?'playing':'paused'; }catch(e){}
+}
+
+function stopTts(keepSession){
   if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(e){} }
   isSpeaking=false; isPaused=false;
+  if(!keepSession) stopSilentAudio();
+  updateMediaState(false);
 }
 
 function updateTtsBtn(){
@@ -443,23 +484,10 @@ function setStatus(k){
   document.getElementById('tts-st').textContent = k?(u[k]||''):'';
 }
 
-function toggleTts(){
-  if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
-  if(isPaused){
-    try{ window.speechSynthesis.resume(); }catch(e){}
-    isPaused=false; isSpeaking=true;
-    updateTtsBtn(); setStatus('speaking');
-    return;
-  }
-  if(isSpeaking){
-    try{ window.speechSynthesis.pause(); }catch(e){}
-    isPaused=true; isSpeaking=false;
-    updateTtsBtn(); setStatus('paused');
-    return;
-  }
-  // Start speaking — called from user gesture, works on iOS
+function speakStep(){
   var step=seq[idx];
   if(!step||step.t==='DONE') return;
+  if(window.speechSynthesis){ try{ window.speechSynthesis.cancel(); }catch(e){} }
   var vm=load('voice','full');
   var c=stepContent(step);
   var txt=vm==='title'?c.title:c.text;
@@ -467,15 +495,37 @@ function toggleTts(){
   var utt=new SpeechSynthesisUtterance(txt);
   utt.lang=TTS_LOCALE[lang]||'ko-KR';
   utt.rate=sp;
-  utt.onstart=function(){ isSpeaking=true; isPaused=false; updateTtsBtn(); setStatus('speaking'); };
-  utt.onend=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); };
-  utt.onerror=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); };
+  utt.onstart=function(){ isSpeaking=true; isPaused=false; updateTtsBtn(); setStatus('speaking'); updateMediaState(true); };
+  utt.onend=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
+  utt.onerror=function(){ isSpeaking=false; isPaused=false; updateTtsBtn(); setStatus(''); updateMediaState(false); };
+  // MediaSession 메타데이터 업데이트
+  var mt=null; for(var i=idx;i>=0;i--){ if(seq[i].t==='MYST'){ mt=seq[i].mt; break; } }
+  setupMediaSession(c.title, mt?(MNAMES[lang]||MNAMES.ko)[mt]:'묵주기도');
   window.speechSynthesis.speak(utt);
+}
+
+function toggleTts(){
+  if(!window.speechSynthesis){ alert('이 브라우저는 TTS를 지원하지 않습니다.'); return; }
+  if(isPaused){
+    try{ window.speechSynthesis.resume(); }catch(e){}
+    isPaused=false; isSpeaking=true;
+    updateTtsBtn(); setStatus('speaking'); updateMediaState(true);
+    return;
+  }
+  if(isSpeaking){
+    try{ window.speechSynthesis.pause(); }catch(e){}
+    isPaused=true; isSpeaking=false;
+    updateTtsBtn(); setStatus('paused'); updateMediaState(false);
+    return;
+  }
+  // 최초 재생: 사용자 제스처에서 호출되어야 iOS에서 동작
+  startSilentAudio();
+  speakStep();
 }
 
 function doStop(){
   var u=UI[lang]||UI.ko;
-  if(confirm(u.confirm)){ stopTts(); showScreen('settings'); }
+  if(confirm(u.confirm)){ stopTts(false); showScreen('settings'); }
 }
 </script>
 </body>
